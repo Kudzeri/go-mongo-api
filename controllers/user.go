@@ -78,4 +78,29 @@ func (uc UserController) CreateUser(w http.ResponseWriter, r *http.Request, _ ht
 }
 
 func (uc UserController) DeleteUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	id := p.ByName("id")
+	if !isValidObjectId(id) {
+		http.NotFound(w, r)
+		return
+	}
+
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		http.Error(w, "Invalid ObjectId", http.StatusBadRequest)
+		return
+	}
+
+	result, err := uc.client.Database("mydb").Collection("users").DeleteOne(r.Context(), bson.M{"_id": oid})
+	if err != nil {
+		http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+		return
+	}
+
+	if result.DeletedCount == 0 {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Deleted User %v\n", oid)
 }
